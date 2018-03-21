@@ -5,6 +5,11 @@ from rdflib import Namespace
 
 class EPOSRDF():
 
+  """
+  Class EPOSRDF
+  Master class for EPOS RDF
+  """
+
   # Define EPOS-RDF Namespaces
   rdf = RDF
   rdfs = RDFS
@@ -44,7 +49,23 @@ class EPOSRDF():
     self.graph.bind("dct", self.dct)
     self.graph.bind("vcard", self.vcard)
 
+
+  def addTuple(self, subject, predicate, object):
+
+    """
+    EPOSRDF.addTuple
+    Maps predicate string ns:field to rdflib class
+    """
+
+    self.graph.add((subject, predicate, object))
+
+
   def mapPredicate(self, predicate):
+
+    """
+    EPOSRDF.mapPredicate
+    Maps predicate string ns:field to rdflib class
+    """
 
     (namespace, item) = predicate.split(":")
     return getattr(self, namespace)[item]
@@ -52,48 +73,72 @@ class EPOSRDF():
 
   def register(self, element):
 
+    """
+    EPOSRDF.register
+    Register an entity with rdflib
+    """
+
+    # Identifier is the dct:identifier
     identifier = element.identifier
 
-    # When no identifier is given: add to graph
+    # Add the identifier under the correct namespace
     if identifier is not None:
       self.graph.add((identifier, self.rdf.type, element.type))
 
-    for key in element.items:
+    # Go over all keys in the dictionary
+    for key in element.dictionary:
 
       # Skip the dct:identifier internal attribute
       if key == "dct:identifier":
         continue
 
       # Get the value
-      value = element.items.get(key)
+      value = element.dictionary.get(key)
 
       # Splat to list
       if not isinstance(value, list):
         value = [value]
 
+      # Register all elements in the list
       for i in value:
         self.registerElement(identifier, key, i)
 
+
   def registerElement(self, identifier, key, value):
+
+    """
+    EPOSRDF.registerElement
+    Registers an element to rdflib
+    """
+
+    # Get the rdflib predicate from the key
+    predicate = self.mapPredicate(key)
 
     # Register literals 
     if isinstance(value, str):
-      self.registerLiteral(identifier, key, value, self.xsd.string)
+      return self.registerLiteral(identifier, predicate, value, self.xsd.string)
     elif isinstance(value, bool):
-      self.registerLiteral(identifier, key, value, self.xsd.boolean)
+      return self.registerLiteral(identifier, predicate, value, self.xsd.boolean)
     elif isinstance(value, int):
-      self.registerLiteral(identifier, key, value, self.xsd.integer)
+      return self.registerLiteral(identifier, predicate, value, self.xsd.integer)
     elif isinstance(value, float):
-      self.registerLiteral(identifier, key, value, self.xsd.float)
+      return self.registerLiteral(identifier, predicate, value, self.xsd.float)
     elif isinstance(value, datetime):
-      self.registerLiteral(identifier, key, value, self.xsd.datetime)
-    else:
-      if value.identifier is not None:
-        self.registerReference(identifier, key, value.identifier)
-      else:
-        self.registerNode(identifier, key, value)
+      return self.registerLiteral(identifier, predicate, value, self.xsd.datetime)
 
-  def registerNode(self, reference, key, value):
+    # Register a reference or blank node
+    if value.identifier is not None:
+      return self.registerReference(identifier, predicate, value.identifier)
+    else:
+      return self.registerBlankNode(identifier, predicate, value)
+
+
+  def registerBlankNode(self, reference, predicate, value):
+
+    """
+    EPOSRDF.registerBlankNode
+    Registers a blank node
+    """
 
     # Create a new node: overwrite the identifier
     value.identifier = BNode()
@@ -102,36 +147,61 @@ class EPOSRDF():
     self.register(value)
 
     # Add the node itself the graph
-    self.graph.add((reference, self.mapPredicate(key), value.identifier))
+    self.addTuple(reference, predicate, value.identifier)
 
-  def registerReference(self, identifier, key, reference):
-    self.graph.add((identifier, self.mapPredicate(key), reference))
 
-  # Register a literal
-  def registerLiteral(self, identifier, key, value, datatype):
-    self.graph.add((identifier, self.mapPredicate(key), Literal(value, datatype=datatype)))
+  def registerReference(self, identifier, predicate, reference):
+
+    """
+    EPOSRDF.registerLiteral
+    Registers a string literal to the identifier
+    """
+
+    self.addTuple(identifier, predicate, reference)
+
+
+  def registerLiteral(self, identifier, predicate, value, datatype):
+
+    """
+    EPOSRDF.registerLiteral
+    Registers a string literal to the identifier
+    """
+
+    self.addTuple(identifier, predicate, Literal(value, datatype=datatype))
+
 
   def __str__(self):
-    return self.graph.serialize(format="turtle")
+
+    """
+    EPOSRDF.__str__
+    Overload printing operator 
+    """
+
+    return self.graph.serialize(format='turtle')
 
 
 class Node(EPOSRDF):
 
+  """
+  Class Node
+  Parent for all EPOS-RDF classes
+  """
+
   def __init__(self, dictionary):
 
-    # Sanity checking for required & allowed
+    # Sanity checking for required
+    if hasattr(self, "REQUIRED"):
+      for required in self.REQUIRED:
+        if required not in dictionary:
+          raise ValueError("Attribute %s in %s is required by EPOS RDF" % (required, self.__class__.__name__))
+
+    # Sanity checking for allowed
     for item in dictionary:
-
-      if hasattr(self, "REQUIRED"):
-        for required in self.REQUIRED:
-          if required not in dictionary:
-            raise ValueError("Attribute %s in %s is required by EPOS RDF" % (required, self.__class__.__name__))
-
       if item not in self.ALLOWED:
         raise ValueError("Attribute %s in %s is not supported by EPOS RDF" % (item, self.__class__.__name__))
 
     # Set the dictionary items
-    self.items = dictionary
+    self.dictionary = dictionary
 
     # Get and set the URIRef identifier
     value = dictionary.get("dct:identifier")

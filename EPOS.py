@@ -3,8 +3,20 @@ from classes import *
 
 if __name__ == "__main__":
 
-  R = EPOSRDF()
+  """
   
+  Example of mapping a Python dict with EPOSRDF classes to TURTLE.
+  The supported classes can be found under ./classes/
+  
+  Author: Mathijs Koymans, 2018
+  Copyright: ORFEUS Data Center
+  All Rights Reversed.
+
+  Licensed under MIT.
+
+  """
+
+  R = EPOSRDF()
   KNMI_ORG = Organization({"dct:identifier": "PIC:997012076"})
 
   a = Organization({
