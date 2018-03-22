@@ -31,6 +31,10 @@ class EPOSRDF():
   epos = Namespace("http://www.epos-eu.org/epos/dcat-ap#")
   schema = Namespace("http://schema.org/")
 
+  # Create a shape
+  shapes = Graph()
+  shapes.parse("shapes.ttl", format="turtle")
+
   def __init__(self):
 
     # Create graph
@@ -86,7 +90,7 @@ class EPOSRDF():
 
     # Add the identifier under the correct namespace
     if identifier is not None:
-      self.graph.add((identifier, self.rdf.type, element.type))
+      self.addTuple(identifier, self.rdf.type, element.type)
 
     if element.dictionary is None:
       return
