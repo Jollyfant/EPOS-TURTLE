@@ -235,9 +235,15 @@ class Node(EPOSRDF):
     Parses the arguments: (identifier), (dict), (identifier, dict)
     """
 
+    # No arguments
+    if len(arguments) == 0:
+      raise ValueError("EPOS Class %s called without parameters" % self.__class__.__name__)
+
+    # Identifier & dictionary specified
     if len(arguments) == 2:
       return arguments
 
+    # Single argument: determine which
     argument = arguments[0]
 
     if isinstance(argument, dict):
