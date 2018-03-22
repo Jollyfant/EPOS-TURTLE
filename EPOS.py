@@ -14,6 +14,24 @@ if __name__ == "__main__":
 
   Licensed under MIT.
 
+  Short Manual:
+
+  Create the EPOSRDF Class
+  Create a root node (one of the available classes) to be registered.
+  The classes are called explicitly with a URI reference and properties (e.g. Organization(identifier, dict))
+  The dict is a list of properties, and multiple classes may be nested.
+
+  For example:
+
+  >>> R = EPOSRDF()
+  >>> RDF = Organization(oIdentifier, {
+        "name": "value",
+        "reference": Person(pIdentifier, {
+          "name": "value"
+        })
+      })
+  >>> R.register(RDF)
+
   """
 
   R = EPOSRDF()
@@ -72,7 +90,7 @@ if __name__ == "__main__":
         }),
         HydraIriTemplateMapping({
           "hydra:variable": "endtime",
-          "hydra:required": False
+          "hydra:required": False 
         }),
         HydraIriTemplateMapping({
           "hydra:variable": "station",
