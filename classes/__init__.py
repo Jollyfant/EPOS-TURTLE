@@ -7,6 +7,8 @@ from Concept import Concept
 from ConceptScheme import ConceptScheme
 from ContactPoint import ContactPoint
 from CreativeWork import CreativeWork
+from Dataset import Dataset
+from Distribution import Distribution
 from Document import Document
 from EPOSWebService import EPOSWebService
 from Equipment import Equipment

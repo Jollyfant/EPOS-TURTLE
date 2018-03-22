@@ -37,6 +37,6 @@ class Dataset(Node):
     "dct:language"
   ]
 
-  def __init__(self, identifier, dictionary):
-    Node.__init__(self, identifier, dictionary)
+  def __init__(self, *args): 
+    Node.__init__(self, args)
     self.type = self.dcat.Dataset
