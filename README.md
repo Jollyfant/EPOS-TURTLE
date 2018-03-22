@@ -8,7 +8,7 @@ Python library for EPOS-RDF conversion.
 
 ## EPOS-RDF Classes
 
-EPOS-RDF Classes can be called with an identifier, dictionary or both.
+EPOS-RDF Classes can be called with an identifier, dictionary or both. A class can be registered within the RDF graph using the `.register` method. Multiple classes can be nested in the dictionaries.
 
 | Call                          | Result     |
 | ----------------------------- | ---------- |
