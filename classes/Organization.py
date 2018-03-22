@@ -5,6 +5,7 @@ class Organization(Node):
   ALLOWED = [
     "dct:identifier",
     "schema:url",
+    "schema:legalName",
     "schema:logo",
     "schema:memberOf",
     "schema:identifier",

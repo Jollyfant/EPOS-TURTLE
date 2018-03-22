@@ -9,7 +9,9 @@ class Concept(Node):
   ALLOWED = REQUIRED + [
     "dct:description",
     "skos:inScheme",
-    "skos:prefLabel"
+    "skos:prefLabel",
+    "skos:hiddenLabel",
+    "skos:altLabel"
   ]
 
   def __init__(self, dictionary):

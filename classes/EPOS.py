@@ -1,6 +1,7 @@
 from datetime import datetime
+from rdflib.serializer import Serializer
 from rdflib import URIRef, Literal, Graph, BNode
-from rdflib.namespace import FOAF, RDF, RDFS, DCTERMS, DC, XSD, SKOS
+from rdflib.namespace import FOAF, RDF, RDFS, DCTERMS, DC, XSD, SKOS, OWL
 from rdflib import Namespace
 
 class EPOSRDF():
@@ -18,8 +19,9 @@ class EPOSRDF():
   dct = DC
   xsd = XSD
   skos = SKOS
+  owl = OWL
 
-  owl = Namespace("http://www.w3.org/2002/07/owl#")
+  spdx = Namespace("http://spdx.org/rdf/terms#")
   adms = Namespace("http://www.w3.org/ns/adms#")
   oa = Namespace("http://www.w3.org/ns/oa#")
   vcard = Namespace("http://www.w3.org/2006/vcard/ns#")
@@ -35,6 +37,7 @@ class EPOSRDF():
     self.graph = Graph()
 
     # Bind the namespaces
+    self.graph.bind("spdx", self.spdx)
     self.graph.bind("skos", self.skos)
     self.graph.bind("adms", self.adms)
     self.graph.bind("owl", self.owl)
@@ -177,7 +180,7 @@ class EPOSRDF():
     Overload printing operator 
     """
 
-    return self.graph.serialize(format='turtle')
+    return self.graph.serialize(format="turtle")
 
 
 class Node(EPOSRDF):
