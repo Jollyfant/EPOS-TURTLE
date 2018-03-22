@@ -91,10 +91,6 @@ class EPOSRDF():
     # Go over all keys in the dictionary
     for key in element.dictionary:
 
-      # Skip the dct:identifier internal attribute
-      if key == "dct:identifier":
-        continue
-
       # Get the value
       value = element.dictionary.get(key)
 
@@ -190,7 +186,7 @@ class Node(EPOSRDF):
   Parent for all EPOS-RDF classes
   """
 
-  def __init__(self, dictionary):
+  def __init__(self, identifier, dictionary):
 
     # Sanity checking for required
     if hasattr(self, "REQUIRED"):
@@ -206,10 +202,7 @@ class Node(EPOSRDF):
     # Set the dictionary items
     self.dictionary = dictionary
 
-    # Get and set the URIRef identifier
-    value = dictionary.get("dct:identifier")
-
-    if value is not None:
-      self.identifier = URIRef(value)
+    if identifier is not None:
+      self.identifier = URIRef(identifier)
     else:
       self.identifier = None

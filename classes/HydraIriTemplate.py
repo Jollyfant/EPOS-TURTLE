@@ -8,5 +8,5 @@ class HydraIriTemplate(Node):
   ]
 
   def __init__(self, dictionary):
-    Node.__init__(self, dictionary)
+    Node.__init__(self, None, dictionary)
     self.type = self.hydra.IriTemplate

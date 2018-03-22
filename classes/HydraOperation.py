@@ -12,6 +12,6 @@ class HydraOperation(Node):
     "hydra:IriTemplate"
   ]
 
-  def __init__(self, dictionary):
-    Node.__init__(self, dictionary)
+  def __init__(self, identifier, dictionary):
+    Node.__init__(self, identifier, dictionary)
     self.type = self.hydra.Operation
