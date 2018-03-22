@@ -19,6 +19,6 @@ class Person(Node):
     "schema:availableLanguage"
   ]
 
-  def __init__(self, identifier, dictionary):
-    Node.__init__(self, identifier, dictionary)
+  def __init__(self, *args):
+    Node.__init__(self, args) 
     self.type = self.schema.Person

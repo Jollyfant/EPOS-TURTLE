@@ -7,6 +7,6 @@ class HydraIriTemplate(Node):
     "hydra:mapping"
   ]
 
-  def __init__(self, dictionary):
-    Node.__init__(self, None, dictionary)
+  def __init__(self, *args): 
+    Node.__init__(self, args) 
     self.type = self.hydra.IriTemplate

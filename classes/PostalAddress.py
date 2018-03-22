@@ -9,6 +9,6 @@ class PostalAddress(Node):
     "schema:addressCountry"
   ]
 
-  def __init__(self, dictionary):
-    Node.__init__(self, None, dictionary)
+  def __init__(self, *args):
+    Node.__init__(self, args)
     self.type = self.schema.PostalAddress

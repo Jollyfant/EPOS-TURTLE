@@ -7,6 +7,6 @@ class PropertyValue(Node):
     "schema:value"
   ]
 
-  def __init__(self, dictionary):
-    Node.__init__(self, None, dictionary) 
+  def __init__(self, *args): 
+    Node.__init__(self, args) 
     self.type = self.schema.PropertyValue

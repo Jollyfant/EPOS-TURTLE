@@ -10,6 +10,6 @@ class HydraIriTemplateMapping(Node):
     "schema:defaultValue"
   ]
 
-  def __init__(self, dictionary):
-    Node.__init__(self, None, dictionary)
+  def __init__(self, *args): 
+    Node.__init__(self, args) 
     self.type = self.hydra.IriTemplateMapping

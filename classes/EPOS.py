@@ -88,6 +88,9 @@ class EPOSRDF():
     if identifier is not None:
       self.graph.add((identifier, self.rdf.type, element.type))
 
+    if element.dictionary is None:
+      return
+
     # Go over all keys in the dictionary
     for key in element.dictionary:
 
@@ -186,9 +189,34 @@ class Node(EPOSRDF):
   Parent for all EPOS-RDF classes
   """
 
-  def __init__(self, identifier, dictionary):
+  def __init__(self, args):
+
+    """
+    Node.__init__
+    Initializes a new node
+    """
+   
+    identifier, dictionary = self.parseArguments(args)
 
     # Sanity checking for required
+    if dictionary is not None:
+      self.checkDictionary(dictionary)
+
+    # Set the dictionary items
+    self.dictionary = dictionary
+
+    if identifier is not None:
+      self.identifier = URIRef(identifier)
+    else:
+      self.identifier = None
+
+
+  def checkDictionary(self, dictionary):
+
+    """
+    Node.checkDictionary
+    """
+
     if hasattr(self, "REQUIRED"):
       for required in self.REQUIRED:
         if required not in dictionary:
@@ -199,10 +227,24 @@ class Node(EPOSRDF):
       if item not in self.ALLOWED:
         raise ValueError("Attribute %s in %s is not supported by EPOS RDF" % (item, self.__class__.__name__))
 
-    # Set the dictionary items
-    self.dictionary = dictionary
 
-    if identifier is not None:
-      self.identifier = URIRef(identifier)
-    else:
-      self.identifier = None
+  def parseArguments(self, arguments):
+
+    """
+    Node.parseArguments
+    Parses the arguments: (identifier), (dict), (identifier, dict)
+    """
+
+    if len(arguments) == 2:
+      return arguments
+
+    argument = arguments[0]
+
+    if isinstance(argument, dict):
+      return None, argument
+
+    if isinstance(argument, str):
+      return argument, None
+
+    # Arguments are invalid
+    raise ValueError("EPOS Class %s called with invalid parameters" % self.__class__.__name__)

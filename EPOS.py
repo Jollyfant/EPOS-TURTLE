@@ -108,7 +108,7 @@ if __name__ == "__main__":
       "schema:streetAddress": "Thuis!"
     }),
     "schema:qualifications": ["Many", "things"],
-    "schema:affiliation": Organization("PIC:999518944", {"dct:identifier": "PIC:999518944"})
+    "schema:affiliation": Organization("PIC:999518944")
   })
 
   e = ConceptScheme("Seismology", {
