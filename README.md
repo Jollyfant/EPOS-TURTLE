@@ -6,6 +6,16 @@ Python library for EPOS-RDF conversion.
 
 * Python [RDFLib](https://rdflib.readthedocs.io/en/stable/)
 
+## EPOS-RDF Classes
+
+EPOS-RDF Classes can be called with an identifier, dictionary or both.
+
+| Call                          | Result     |
+| ----------------------------- | ---------- |
+| Class(identifier)             | Reference  |
+| Class(dictionary)             | Node       |
+| Class(identifier, dictionary) | Graph Node |
+
 ## Example Usage
 
     from classes.EPOS import EPOSRDF
@@ -14,7 +24,10 @@ Python library for EPOS-RDF conversion.
     R = EPOSRDF()
 
     Org = Organization("PIC:997012076", {
-      "epos:legalContact": Person("http://orcid.org/0000-0001-7750-7254")
+      "epos:legalContact": Person("http://orcid.org/0000-0001-7750-7254"),
+      "schema:address": PostalAddress({
+        "streetAddress": "Utrechtseweg 279"
+      })
     })
 
     R.register(Org)
