@@ -1,3 +1,5 @@
+import json
+
 from classes.EPOS import EPOSRDF
 from classes import *
 

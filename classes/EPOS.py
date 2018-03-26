@@ -21,6 +21,7 @@ class EPOSRDF():
   skos = SKOS
   owl = OWL
 
+  sh = Namespace("http://www.w3.org/ns/shacl#")
   spdx = Namespace("http://spdx.org/rdf/terms#")
   adms = Namespace("http://www.w3.org/ns/adms#")
   oa = Namespace("http://www.w3.org/ns/oa#")
@@ -31,16 +32,15 @@ class EPOSRDF():
   epos = Namespace("http://www.epos-eu.org/epos/dcat-ap#")
   schema = Namespace("http://schema.org/")
 
-  # Create a shape
-  shapes = Graph()
-  shapes.parse("shapes.ttl", format="turtle")
-
   def __init__(self):
+
+    self.parseShapes()
 
     # Create graph
     self.graph = Graph()
 
     # Bind the namespaces
+    self.graph.bind("sh", self.sh)
     self.graph.bind("spdx", self.spdx)
     self.graph.bind("skos", self.skos)
     self.graph.bind("adms", self.adms)
@@ -137,6 +137,89 @@ class EPOSRDF():
       return self.registerReference(identifier, predicate, value.identifier)
     else:
       return self.registerBlankNode(identifier, predicate, value)
+
+
+  def parseShapes(self):
+
+    """
+    EPOSRDF.parseShapes
+    Parses shapes file for simple validation
+    """
+
+    def extractOr(ors):
+    
+      """
+      EPOSRDF.extractOr
+      Recursively extracts information from shacl:or
+      """
+
+      things = list()
+    
+      # Get the "first" attribute
+      for s, p, o in self.shapes.triples((ors, self.rdf.first, None)):
+        things = things + getAllowed(o)
+    
+      # Recursion for shacl:rest
+      for s, p, o in self.shapes.triples((ors, self.rdf.rest, None)):
+        things = things + extractOr(o)
+    
+      return things
+
+
+    def getAllowed(o):
+    
+      """
+      EPOSRDF.getAllowed
+      Gets the allowed types for a node
+      """
+    
+      nodes = list()
+    
+      # Supported shacl types
+      for thing in ["datatype", "class", "nodeKind", "node"]:
+        nodes.append(self.shapes.value(o, self.sh[thing]))
+    
+      return nodes
+
+    # Create a shape
+    self.shapes = Graph()
+    self.shapes.parse("shapes.ttl", format="turtle")
+
+    collection = dict()
+
+    # Get all the node shapes
+    for s, p, o in self.shapes.triples((None, self.rdf.type, self.sh.NodeShape)):
+
+      namespace = self.shapes.value(s, self.sh.targetClass)
+
+      if namespace is None:
+        continue
+
+      collection[namespace.n3()] = dict()
+
+      for s, p, o in self.shapes.triples((s, self.sh.property, None)):
+
+        allowed = getAllowed(o)
+
+        path = self.shapes.value(o, self.sh.path)
+        minC = self.shapes.value(o, self.sh.minCount) or 0
+        maxC = self.shapes.value(o, self.sh.maxCount) or 0
+
+        # Make sure to include shacl.or statements
+        orPredicate = self.shapes.value(o, self.sh["or"])
+        if orPredicate is not None:
+          allowed = allowed + extractOr(orPredicate)
+
+        # Remove all None values
+        allowed = filter(lambda x: x is not None, allowed)
+
+        collection[namespace.n3()][path.n3()] = {
+          "minItems": int(minC),
+          "maxItems": int(maxC),
+          "allowed": allowed
+        }
+
+    self.collection = collection
 
 
   def registerBlankNode(self, reference, predicate, value):
