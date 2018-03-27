@@ -81,7 +81,6 @@ class EPOSRDF(RDFNamespaces):
     self.graph.bind("dct", self.dct)
     self.graph.bind("vcard", self.vcard)
 
-
   def addTuple(self, subject, predicate, object):
 
     """
@@ -133,20 +132,12 @@ class EPOSRDF(RDFNamespaces):
     predicate = self.mapPredicate(key)
 
     # Register literals 
-    if isinstance(value, str):
-      return self.registerLiteral(identifier, predicate, value, self.xsd.string)
-    elif isinstance(value, bool):
-      return self.registerLiteral(identifier, predicate, value, self.xsd.boolean)
-    elif isinstance(value, int):
-      return self.registerLiteral(identifier, predicate, value, self.xsd.integer)
-    elif isinstance(value, float):
-      return self.registerLiteral(identifier, predicate, value, self.xsd.float)
-    elif isinstance(value, datetime):
-      return self.registerLiteral(identifier, predicate, value, self.xsd.datetime)
+    if isinstance(value, Literal):
+      return self.registerNode(identifier, predicate, value)
 
     # Register a reference or blank node
     if value.identifier is not None:
-      return self.registerReference(identifier, predicate, value.identifier)
+      return self.registerNode(identifier, predicate, value.identifier)
     else:
       return self.registerBlankNode(identifier, predicate, value)
 
@@ -166,37 +157,28 @@ class EPOSRDF(RDFNamespaces):
     # Add the node itself the graph
     self.addTuple(reference, predicate, value.identifier)
 
-
-  def registerReference(self, identifier, predicate, reference):
-
-    """
-    EPOSRDF.registerLiteral
-    Registers a string literal to the identifier
-    """
-
-    self.addTuple(identifier, predicate, reference)
-
-
-  def registerLiteral(self, identifier, predicate, value, datatype):
+  def registerNode(self, identifier, predicate, value):
 
     """
     EPOSRDF.registerLiteral
     Registers a string literal to the identifier
     """
 
-    self.addTuple(identifier, predicate, Literal(value, datatype=datatype))
+    self.addTuple(identifier, predicate, value)
 
-  """
   def __str__(self):
 
+    """
     EPOSRDF.__str__
     Overload printing operator 
+    """
 
     return self.graph.serialize(format="turtle")
-  """
 
 
 class RDFValidator(RDFNamespaces):
+
+  SHAPEFILE = "shapes.ttl"
 
   def __init__(self):
 
@@ -207,9 +189,9 @@ class RDFValidator(RDFNamespaces):
 
     # Create a shape
     self.shapes = Graph()
-    self.shapes.parse("shapes.ttl", format="turtle")
+    self.shapes.parse(self.SHAPEFILE, format="turtle")
 
-    collection = dict()
+    shackles = dict()
 
     # Get all the node shapes
     for s, p, o in self.shapes.triples((None, self.rdf.type, self.sh.NodeShape)):
@@ -219,7 +201,7 @@ class RDFValidator(RDFNamespaces):
       if namespace is None:
         continue
 
-      collection[namespace.n3()] = dict()
+      shackles[namespace.n3()] = dict()
 
       for s, p, o in self.shapes.triples((s, self.sh.property, None)):
 
@@ -235,18 +217,19 @@ class RDFValidator(RDFNamespaces):
           allowed = allowed + self.extractOr(orPredicate)
 
         # Remove all None values
-        allowed = filter(lambda x: x is not None, allowed)
+        allowed = map(lambda x: x.n3(), filter(lambda x: x is not None, allowed))
 
-        collection[namespace.n3()][path.n3()] = {
+        shackles[namespace.n3()][path.n3()] = {
           "minItems": int(minC),
           "maxItems": int(maxC),
-          "allowed": allowed
+          "allowed": allowed,
+          "path": path
         }
 
-    self.collection = collection
-    print self.collection
+    self.shackles = shackles
+    print self.shackles
 
-  def extractOr(self, o):
+  def extractOr(self, orNode):
 
     """
     EPOSRDF.extractOr
@@ -256,11 +239,11 @@ class RDFValidator(RDFNamespaces):
     things = list()
 
     # Get the "first" attribute
-    for s, p, o in self.shapes.triples((o, self.rdf.first, None)):
+    for s, p, o in self.shapes.triples((orNode, self.rdf.first, None)):
       things = things + self.getAllowed(o)
 
     # Recursion for shacl:rest
-    for s, p, o in self.shapes.triples((o, self.rdf.rest, None)):
+    for s, p, o in self.shapes.triples((orNode, self.rdf.rest, None)):
       things = things + self.extractOr(o)
 
     return things
@@ -299,6 +282,11 @@ class Node(RDFNamespaces):
    
     identifier, dictionary = self.parseArguments(args)
 
+    if dictionary is not None:
+      for item in dictionary:
+        if isinstance(dictionary[item], str):
+          dictionary[item] = Literal(dictionary[item], datatype=self.xsd.string)
+
     # Sanity checking for required
     if dictionary is not None:
       self.checkDictionary(dictionary)
@@ -311,23 +299,39 @@ class Node(RDFNamespaces):
     else:
       self.identifier = None
 
-
   def checkDictionary(self, dictionary):
 
     """
     Node.checkDictionary
+    Checks the validity of the dictionary
     """
 
-    if hasattr(self, "REQUIRED"):
-      for required in self.REQUIRED:
-        if required not in dictionary:
-          raise ValueError("Attribute %s in %s is required by EPOS RDF" % (required, self.__class__.__name__))
+    # Convert keys to rdflib predicates
+    predicates = map(lambda x: x.n3(), map(self.mapPredicate, dictionary.keys()))
 
-    # Sanity checking for allowed
-    for item in dictionary:
-      if item not in self.ALLOWED:
-        raise ValueError("Attribute %s in %s is not supported by EPOS RDF" % (item, self.__class__.__name__))
+    # If a shacl:NodeShape was constrained
+    if self.type.n3() in self.validator.shackles:
 
+      # Check required
+      for n in self.validator.shackles[self.type.n3()]:
+        if self.validator.shackles[self.type.n3()][n]["minItems"] > 0:
+          if not n in predicates:
+            raise ValueError("Attribute %s in %s is required by EPOS RDF" % (n, self.__class__.__name__))
+
+      # Check allowed
+      for p in predicates:
+        if p not in self.validator.shackles[self.type.n3()]:
+          raise ValueError("Attribute %s in %s is not supported by EPOS RDF" % (p, self.__class__.__name__))
+
+      # Check the types
+      for p in dictionary:
+        if self.mapPredicate(p).n3() in self.validator.shackles[self.type.n3()]:
+          if isinstance(dictionary[p], Literal):
+            if URIRef(dictionary[p].datatype).n3() not in self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]["allowed"]:
+              raise ValueError("Attribute %s of type in %s %s is not supported by EPOS RDF" % (p, dictionary[p].datatype, self.__class__.__name__))
+          else:
+            if URIRef(dictionary[p].type).n3() not in self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]["allowed"]:
+              raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF" % (p, dictionary[p].type, self.__class__.__name__))
 
   def parseArguments(self, arguments):
 
