@@ -2,12 +2,6 @@ from EPOS import Node
 
 class Frequency(Node):
 
-  REQUIRED = [
-  ]
-
-  ALLOWED = REQUIRED + [
-  ]
-
-  def __init__(self, identifier, dictionary):
-    Node.__init__(self, identifier, dictionary)
+  def __init__(self, *args): 
     self.type = self.dct.Frequency
+    Node.__init__(self, args) 

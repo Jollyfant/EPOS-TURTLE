@@ -2,13 +2,6 @@ from EPOS import Node
 
 class CreativeWork(Node):
 
-  REQUIRED = [
-    "dct:identifier"
-  ]
-
-  ALLOWED = REQUIRED + [
-  ]
-
-  def __init__(self, identifier, dictionary):
-    Node.__init__(self, identifier, dictionary)
+  def __init__(self, *args): 
     self.type = self.schema.CreativeWork
+    Node.__init__(self, args) 
