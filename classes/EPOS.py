@@ -1,17 +1,17 @@
+import json
 from datetime import datetime
 from rdflib.serializer import Serializer
 from rdflib import URIRef, Literal, Graph, BNode
 from rdflib.namespace import FOAF, RDF, RDFS, DCTERMS, DC, XSD, SKOS, OWL
 from rdflib import Namespace
 
-class EPOSRDF():
+class RDFNamespaces():
 
   """
-  Class EPOSRDF
-  Master class for EPOS RDF
+  Class RDFNamespaces
+  Holds namespaces for EPOSRDF
   """
 
-  # Define EPOS-RDF Namespaces
   rdf = RDF
   rdfs = RDFS
   foaf = FOAF
@@ -21,6 +21,7 @@ class EPOSRDF():
   skos = SKOS
   owl = OWL
 
+  # Define custom namespaces
   sh = Namespace("http://www.w3.org/ns/shacl#")
   spdx = Namespace("http://spdx.org/rdf/terms#")
   adms = Namespace("http://www.w3.org/ns/adms#")
@@ -33,8 +34,32 @@ class EPOSRDF():
   schema = Namespace("http://schema.org/")
 
   def __init__(self):
+    pass
 
-    self.parseShapes()
+  def mapPredicate(self, predicate):
+
+    """
+    EPOSRDF.mapPredicate
+    Maps predicate string ns:field to rdflib class
+    """
+
+    (namespace, item) = predicate.split(":")
+    return getattr(self, namespace)[item]
+
+
+class EPOSRDF(RDFNamespaces):
+
+  """
+  Class EPOSRDF
+  Master class for EPOS RDF
+  """
+
+  def __init__(self):
+
+    """
+    EPOSRDF.__init__
+    Initializes EPOSRDF class
+    """
 
     # Create graph
     self.graph = Graph()
@@ -65,18 +90,6 @@ class EPOSRDF():
     """
 
     self.graph.add((subject, predicate, object))
-
-
-  def mapPredicate(self, predicate):
-
-    """
-    EPOSRDF.mapPredicate
-    Maps predicate string ns:field to rdflib class
-    """
-
-    (namespace, item) = predicate.split(":")
-    return getattr(self, namespace)[item]
-
 
   def register(self, element):
 
@@ -109,7 +122,6 @@ class EPOSRDF():
       for i in value:
         self.registerElement(identifier, key, i)
 
-
   def registerElement(self, identifier, key, value):
 
     """
@@ -137,90 +149,6 @@ class EPOSRDF():
       return self.registerReference(identifier, predicate, value.identifier)
     else:
       return self.registerBlankNode(identifier, predicate, value)
-
-
-  def parseShapes(self):
-
-    """
-    EPOSRDF.parseShapes
-    Parses shapes file for simple validation
-    """
-
-    def extractOr(ors):
-    
-      """
-      EPOSRDF.extractOr
-      Recursively extracts information from shacl:or
-      """
-
-      things = list()
-    
-      # Get the "first" attribute
-      for s, p, o in self.shapes.triples((ors, self.rdf.first, None)):
-        things = things + getAllowed(o)
-    
-      # Recursion for shacl:rest
-      for s, p, o in self.shapes.triples((ors, self.rdf.rest, None)):
-        things = things + extractOr(o)
-    
-      return things
-
-
-    def getAllowed(o):
-    
-      """
-      EPOSRDF.getAllowed
-      Gets the allowed types for a node
-      """
-    
-      nodes = list()
-    
-      # Supported shacl types
-      for thing in ["datatype", "class", "nodeKind", "node"]:
-        nodes.append(self.shapes.value(o, self.sh[thing]))
-    
-      return nodes
-
-    # Create a shape
-    self.shapes = Graph()
-    self.shapes.parse("shapes.ttl", format="turtle")
-
-    collection = dict()
-
-    # Get all the node shapes
-    for s, p, o in self.shapes.triples((None, self.rdf.type, self.sh.NodeShape)):
-
-      namespace = self.shapes.value(s, self.sh.targetClass)
-
-      if namespace is None:
-        continue
-
-      collection[namespace.n3()] = dict()
-
-      for s, p, o in self.shapes.triples((s, self.sh.property, None)):
-
-        allowed = getAllowed(o)
-
-        path = self.shapes.value(o, self.sh.path)
-        minC = self.shapes.value(o, self.sh.minCount) or 0
-        maxC = self.shapes.value(o, self.sh.maxCount) or 0
-
-        # Make sure to include shacl.or statements
-        orPredicate = self.shapes.value(o, self.sh["or"])
-        if orPredicate is not None:
-          allowed = allowed + extractOr(orPredicate)
-
-        # Remove all None values
-        allowed = filter(lambda x: x is not None, allowed)
-
-        collection[namespace.n3()][path.n3()] = {
-          "minItems": int(minC),
-          "maxItems": int(maxC),
-          "allowed": allowed
-        }
-
-    self.collection = collection
-
 
   def registerBlankNode(self, reference, predicate, value):
 
@@ -258,23 +186,109 @@ class EPOSRDF():
 
     self.addTuple(identifier, predicate, Literal(value, datatype=datatype))
 
-
+  """
   def __str__(self):
 
-    """
     EPOSRDF.__str__
     Overload printing operator 
-    """
 
     return self.graph.serialize(format="turtle")
+  """
 
 
-class Node(EPOSRDF):
+class RDFValidator(RDFNamespaces):
+
+  def __init__(self):
+
+    """
+    EPOSRDF.__init__
+    Parses shapes file for simple validation
+    """
+
+    # Create a shape
+    self.shapes = Graph()
+    self.shapes.parse("shapes.ttl", format="turtle")
+
+    collection = dict()
+
+    # Get all the node shapes
+    for s, p, o in self.shapes.triples((None, self.rdf.type, self.sh.NodeShape)):
+
+      namespace = self.shapes.value(s, self.sh.targetClass)
+
+      if namespace is None:
+        continue
+
+      collection[namespace.n3()] = dict()
+
+      for s, p, o in self.shapes.triples((s, self.sh.property, None)):
+
+        allowed = self.getAllowed(o)
+
+        path = self.shapes.value(o, self.sh.path)
+        minC = self.shapes.value(o, self.sh.minCount) or 0
+        maxC = self.shapes.value(o, self.sh.maxCount) or 0
+
+        # Make sure to include shacl.or statements
+        orPredicate = self.shapes.value(o, self.sh["or"])
+        if orPredicate is not None:
+          allowed = allowed + self.extractOr(orPredicate)
+
+        # Remove all None values
+        allowed = filter(lambda x: x is not None, allowed)
+
+        collection[namespace.n3()][path.n3()] = {
+          "minItems": int(minC),
+          "maxItems": int(maxC),
+          "allowed": allowed
+        }
+
+    self.collection = collection
+    print self.collection
+
+  def extractOr(self, o):
+
+    """
+    EPOSRDF.extractOr
+    Recursively extracts information from shacl:or
+    """
+
+    things = list()
+
+    # Get the "first" attribute
+    for s, p, o in self.shapes.triples((o, self.rdf.first, None)):
+      things = things + self.getAllowed(o)
+
+    # Recursion for shacl:rest
+    for s, p, o in self.shapes.triples((o, self.rdf.rest, None)):
+      things = things + self.extractOr(o)
+
+    return things
+
+  def getAllowed(self, o):
+
+    """
+    EPOSRDF.getAllowed
+    Gets the allowed types for a node
+    """
+
+    nodes = list()
+
+    # Supported shacl types
+    for thing in ["datatype", "class", "nodeKind", "node"]:
+      nodes.append(self.shapes.value(o, self.sh[thing]))
+
+    return nodes
+
+class Node(RDFNamespaces):
 
   """
   Class Node
   Parent for all EPOS-RDF classes
   """
+
+  # Create a validator for all nodes
+  validator = RDFValidator()
 
   def __init__(self, args):
 
