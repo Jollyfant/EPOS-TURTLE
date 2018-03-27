@@ -24,17 +24,25 @@ class RDFNamespaces():
   owl = OWL
 
   # Define custom namespaces
+  adms = Namespace("http://www.w3.org/ns/adms#")
+  cnt = Namespace("http://www.w3.org/2011/content#")
+  dash = Namespace("http://datashapes.org/dash#")
   dcat = Namespace("http://www.w3.org/ns/dcat#")
+  epos = Namespace("http://www.epos-eu.org/epos/dcat-ap#")
+  hydra = Namespace("http://www.w3.org/ns/hydra/core#")
+  locn = Namespace("http://www.w3.org/ns/locn#")
+  oa = Namespace("http://www.w3.org/ns/oa#")
+  org = Namespace("http://www.w3.org/ns/org#")
+  prov = Namespace("http://www.w3.org/ns/prov#")
+  schema = Namespace("http://schema.org/")
   sh = Namespace("http://www.w3.org/ns/shacl#")
   spdx = Namespace("http://spdx.org/rdf/terms#")
-  adms = Namespace("http://www.w3.org/ns/adms#")
-  oa = Namespace("http://www.w3.org/ns/oa#")
+  skosxl = Namespace("http://w3.org/2008/05/skos-xl#")
+  tosh = Namespace("http://topbraid.org/tosh#")
+  vann = Namespace("http://purl.org/vocab/vann/")
   vcard = Namespace("http://www.w3.org/2006/vcard/ns#")
-  cnt = Namespace("http://www.w3.org/2011/content#")
-  locn = Namespace("http://www.w3.org/ns/locn#")
-  hydra = Namespace("http://www.w3.org/ns/hydra/core#")
-  epos = Namespace("http://www.epos-eu.org/epos/dcat-ap#")
-  schema = Namespace("http://schema.org/")
+  voaf = Namespace("http://purl.org/vocommons/voaf#")
+  wot = Namespace("http://xmlns.com/wot/0.1")
 
   def __init__(self):
     pass
