@@ -2,18 +2,6 @@ from EPOS import Node
 
 class Concept(Node):
 
-  REQUIRED = [
-    "dct:identifier"
-  ]
-
-  ALLOWED = REQUIRED + [
-    "dct:description",
-    "skos:inScheme",
-    "skos:prefLabel",
-    "skos:hiddenLabel",
-    "skos:altLabel"
-  ]
-
-  def __init__(self, identifier, dictionary):
-    Node.__init__(self, identifier, dictionary)
+  def __init__(self, *args):
     self.type = self.skos.Concept
+    Node.__init__(self, args)

@@ -15,13 +15,14 @@ class RDFNamespaces():
   rdf = RDF
   rdfs = RDFS
   foaf = FOAF
-  dcat = DCTERMS
-  dct = DC
+  dct = DCTERMS
+  dc = DC
   xsd = XSD
   skos = SKOS
   owl = OWL
 
   # Define custom namespaces
+  dcat = Namespace("http://www.w3.org/ns/dcat#")
   sh = Namespace("http://www.w3.org/ns/shacl#")
   spdx = Namespace("http://spdx.org/rdf/terms#")
   adms = Namespace("http://www.w3.org/ns/adms#")
@@ -78,6 +79,7 @@ class EPOSRDF(RDFNamespaces):
     self.graph.bind("hydra", self.hydra)
     self.graph.bind("locn", self.locn)
     self.graph.bind("dcat", self.dcat)
+    self.graph.bind("dc", self.dcat)
     self.graph.bind("dct", self.dct)
     self.graph.bind("vcard", self.vcard)
 
@@ -227,7 +229,6 @@ class RDFValidator(RDFNamespaces):
         }
 
     self.shackles = shackles
-    print self.shackles
 
   def extractOr(self, orNode):
 
@@ -282,13 +283,29 @@ class Node(RDFNamespaces):
    
     identifier, dictionary = self.parseArguments(args)
 
+    # Convert dictionary literal types
     if dictionary is not None:
-      for item in dictionary:
-        if isinstance(dictionary[item], str):
-          dictionary[item] = Literal(dictionary[item], datatype=self.xsd.string)
 
-    # Sanity checking for required
-    if dictionary is not None:
+      for item in dictionary:
+
+        value = dictionary.get(item)
+
+        # Convert to literal of appropriate type
+        if isinstance(value, str):
+          if value.startswith("http://") or value.startswith("https://"):
+            dictionary[item] = Literal(value, datatype=self.xsd.anyURI)
+          else:
+            dictionary[item] = Literal(value, datatype=self.xsd.string)
+        elif isinstance(value, int):
+          dictionary[item] = Literal(value, datatype=self.xsd.integer)
+        elif isinstance(value, float):
+          dictionary[item] = Literal(value, datatype=self.xsd.float)
+        elif isinstance(value, bool):
+          dictionary[item] = Literal(value, datatype=self.xsd.boolean)
+        elif isinstance(value, datetime):
+          dictionary[item] = Literal(value, datatype=self.epos.DateOrDateTimeDataType)
+
+      # Sanity checking for required
       self.checkDictionary(dictionary)
 
     # Set the dictionary items
@@ -304,6 +321,7 @@ class Node(RDFNamespaces):
     """
     Node.checkDictionary
     Checks the validity of the dictionary
+    !!! TODO: Refactor this: kind of messy
     """
 
     # Convert keys to rdflib predicates
@@ -326,12 +344,13 @@ class Node(RDFNamespaces):
       # Check the types
       for p in dictionary:
         if self.mapPredicate(p).n3() in self.validator.shackles[self.type.n3()]:
+          allowed = self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]["allowed"]
           if isinstance(dictionary[p], Literal):
-            if URIRef(dictionary[p].datatype).n3() not in self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]["allowed"]:
-              raise ValueError("Attribute %s of type in %s %s is not supported by EPOS RDF" % (p, dictionary[p].datatype, self.__class__.__name__))
+            if URIRef(dictionary[p].datatype).n3() not in allowed:
+              raise ValueError("Attribute %s of type in %s %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
           else:
-            if URIRef(dictionary[p].type).n3() not in self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]["allowed"]:
-              raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF" % (p, dictionary[p].type, self.__class__.__name__))
+            if URIRef(dictionary[p].type).n3() not in allowed: 
+              raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].type, self.__class__.__name__, allowed))
 
   def parseArguments(self, arguments):
 
