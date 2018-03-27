@@ -1,4 +1,6 @@
 import json
+import os
+
 from datetime import datetime
 from rdflib.serializer import Serializer
 from rdflib import URIRef, Literal, Graph, BNode
@@ -65,7 +67,7 @@ class EPOSRDF(RDFNamespaces):
     # Create graph
     self.graph = Graph()
 
-    # Bind the namespaces
+    # Bind the namespaces to the graph
     self.graph.bind("sh", self.sh)
     self.graph.bind("spdx", self.spdx)
     self.graph.bind("skos", self.skos)
@@ -168,19 +170,19 @@ class EPOSRDF(RDFNamespaces):
 
     self.addTuple(identifier, predicate, value)
 
-  def __str__(self):
+  def serialize(self, format="turtle"):
 
     """
     EPOSRDF.__str__
     Overload printing operator 
     """
 
-    return self.graph.serialize(format="turtle")
+    return self.graph.serialize(format=format)
 
 
 class RDFValidator(RDFNamespaces):
 
-  SHAPEFILE = "shapes.ttl"
+  SHAPEFILE = os.path.join("shacl", "shapes.ttl")
 
   def __init__(self):
 
@@ -205,10 +207,12 @@ class RDFValidator(RDFNamespaces):
 
       shackles[namespace.n3()] = dict()
 
+      # Extract all properties from the shape definition
       for s, p, o in self.shapes.triples((s, self.sh.property, None)):
 
         allowed = self.getAllowed(o)
 
+        # Property-properties (e.g. min, max)
         path = self.shapes.value(o, self.sh.path)
         minC = self.shapes.value(o, self.sh.minCount) or 0
         maxC = self.shapes.value(o, self.sh.maxCount) or 0
@@ -292,20 +296,25 @@ class Node(RDFNamespaces):
 
         # Convert to literal of appropriate type
         if isinstance(value, str):
+
+          # Map URI (URLs)
           if value.startswith("http://") or value.startswith("https://"):
             dictionary[item] = Literal(value, datatype=self.xsd.anyURI)
           else:
             dictionary[item] = Literal(value, datatype=self.xsd.string)
+
         elif isinstance(value, int):
           dictionary[item] = Literal(value, datatype=self.xsd.integer)
         elif isinstance(value, float):
           dictionary[item] = Literal(value, datatype=self.xsd.float)
         elif isinstance(value, bool):
           dictionary[item] = Literal(value, datatype=self.xsd.boolean)
+
+        # Map datetime to custom EPOS definition
         elif isinstance(value, datetime):
           dictionary[item] = Literal(value, datatype=self.epos.DateOrDateTimeDataType)
 
-      # Sanity checking for required
+      # Sanity checking for the passed dictionary 
       self.checkDictionary(dictionary)
 
     # Set the dictionary items

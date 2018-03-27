@@ -8,13 +8,15 @@ Python library for EPOS-RDF conversion.
 
 ## EPOS-RDF Classes
 
-EPOS-RDF Classes can be called with an identifier, dictionary or both. A class can be registered within the RDF graph using the `.register` method. Multiple classes can be nested in the dictionaries.
+EPOS-RDF Classes can be called with an identifier, dictionary or both. A class can be registered within the RDF graph using the `.register` method. Multiple classes can be nested in the dictionaries. Input is checked against the shapes contraint file (shacl).
 
 | Call                          | Result     |
 | ----------------------------- | ---------- |
 | Class(identifier)             | Reference  |
 | Class(dictionary)             | Node       |
 | Class(identifier, dictionary) | Graph Node |
+
+To extract the RDF call the `serialize()` method. The default format is "turtle".
 
 ## Example Usage
 
@@ -32,7 +34,7 @@ EPOS-RDF Classes can be called with an identifier, dictionary or both. A class c
 
     R.register(Org)
 
-    print R
+    print R.serialize()
 
 Supported EPOS-RDF Classes:
 

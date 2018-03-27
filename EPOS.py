@@ -63,4 +63,4 @@ if __name__ == "__main__":
   R.register(Pers)
   R.register(Webs)
   
-  print R
+  print R.serialize(format="json-ld")
