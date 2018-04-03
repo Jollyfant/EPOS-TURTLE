@@ -18,8 +18,6 @@ class RDFNamespaces():
   rdf = RDF
   rdfs = RDFS
   foaf = FOAF
-  dct = DCTERMS
-  dc = DC
   xsd = XSD
   skos = SKOS
   owl = OWL
@@ -28,8 +26,10 @@ class RDFNamespaces():
   adms = Namespace("http://www.w3.org/ns/adms#")
   cnt = Namespace("http://www.w3.org/2011/content#")
   dash = Namespace("http://datashapes.org/dash#")
-  dcat = Namespace("http://www.w3.org/ns/dcat#")
   epos = Namespace("http://www.epos-eu.org/epos/dcat-ap#")
+  dc = Namespace("http://purl.org/dc/elements/1.1/")
+  dcat = Namespace("http://www.w3.org/ns/dcat#")
+  dct = Namespace("http://purl.org/dc/terms/")
   hydra = Namespace("http://www.w3.org/ns/hydra/core#")
   locn = Namespace("http://www.w3.org/ns/locn#")
   oa = Namespace("http://www.w3.org/ns/oa#")
@@ -95,7 +95,7 @@ class EPOSRDF(RDFNamespaces):
     self.graph.bind("hydra", self.hydra)
     self.graph.bind("locn", self.locn)
     self.graph.bind("dcat", self.dcat)
-    self.graph.bind("dc", self.dcat)
+    self.graph.bind("dc", self.dc)
     self.graph.bind("dct", self.dct)
     self.graph.bind("vcard", self.vcard)
 
@@ -287,8 +287,18 @@ class RDFValidator(RDFNamespaces):
     nodes = list()
 
     # Supported shacl types
-    for thing in ["datatype", "class", "nodeKind", "node"]:
-      nodes.append(self.shapes.value(o, self.sh[thing]))
+    for thing in ["datatype", "class", "node"]:
+
+      value = self.shapes.value(o, self.sh[thing])
+
+      if value is None:
+        continue
+
+      # Remember to map nodes
+      if thing != "node":
+        nodes.append(value)
+      else:
+        nodes = nodes + self.extractOr(self.shapes.value(value, self.sh["or"]))
 
     return nodes
 
