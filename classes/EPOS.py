@@ -1,4 +1,5 @@
 import json
+import warnings
 import os
 
 from datetime import datetime
@@ -234,6 +235,7 @@ class RDFValidator(RDFNamespaces):
         path = self.shapes.value(o, self.sh.path)
         minC = self.shapes.value(o, self.sh.minCount) or 0
         maxC = self.shapes.value(o, self.sh.maxCount) or 0
+        severity = self.shapes.value(o, self.sh.severity)
 
         # Make sure to include shacl.or statements
         orPredicate = self.shapes.value(o, self.sh["or"])
@@ -243,12 +245,16 @@ class RDFValidator(RDFNamespaces):
         # Remove all None values
         allowed = map(lambda x: x.n3(), filter(lambda x: x is not None, allowed))
 
-        shackles[namespace.n3()][path.n3()] = {
+        if path.n3() not in shackles[namespace.n3()]:
+          shackles[namespace.n3()][path.n3()] = list()
+
+        shackles[namespace.n3()][path.n3()].append({
           "minItems": int(minC),
           "maxItems": int(maxC),
           "allowed": allowed,
+          "severity": severity,
           "path": path
-        }
+        })
 
     self.shackles = shackles
 
@@ -348,6 +354,7 @@ class Node(RDFNamespaces):
     """
     Node.checkDictionary
     Checks the validity of the dictionary
+    !!! TODO: refactor
     """
 
     # Convert keys to rdflib predicates
@@ -358,9 +365,13 @@ class Node(RDFNamespaces):
 
       # Check required
       for n in self.validator.shackles[self.type.n3()]:
-        if self.validator.shackles[self.type.n3()][n]["minItems"] > 0:
-          if not n in predicates:
-            raise ValueError("Attribute %s in %s is required by EPOS RDF" % (n, self.__class__.__name__))
+        for rule in self.validator.shackles[self.type.n3()][n]:
+          if rule["minItems"] > 0:
+            if not n in predicates:
+              if rule["severity"].n3() == self.sh.Warning.n3():
+                warnings.warn("Attribute %s in %s is recommended by EPOS RDF" % (n, self.__class__.__name__), UserWarning)
+              else:
+                raise ValueError("Attribute %s in %s is required by EPOS RDF" % (n, self.__class__.__name__))
 
       # Check allowed
       for p in predicates:
@@ -371,19 +382,20 @@ class Node(RDFNamespaces):
       for p in dictionary:
 
         if self.mapPredicate(p).n3() in self.validator.shackles[self.type.n3()]:
-          allowed = self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]["allowed"]
+          for rule in self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]:
+            allowed = rule["allowed"]
 
-          if isinstance(dictionary[p], Literal):
-            if URIRef(dictionary[p].datatype).n3() not in allowed:
-              raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
+            if isinstance(dictionary[p], Literal):
+              if URIRef(dictionary[p].datatype).n3() not in allowed:
+                raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
 
-          # Skip all dicts
-          elif isinstance(dictionary[p], dict):
-            pass
+            # Skip all dicts
+            elif isinstance(dictionary[p], dict):
+              pass
 
-          else:
-            if URIRef(dictionary[p].type).n3() not in allowed: 
-              raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].type, self.__class__.__name__, allowed))
+            else:
+              if URIRef(dictionary[p].type).n3() not in allowed: 
+                raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].type, self.__class__.__name__, allowed))
 
   def parseArguments(self, arguments):
 
