@@ -13,10 +13,24 @@ EPOS-RDF Classes can be called with an identifier, dictionary or both. A class c
 | Call                          | Result     |
 | ----------------------------- | ---------- |
 | Class(identifier)             | Reference  |
-| Class(dictionary)             | Node       |
+| Class(dictionary)             | Blank Node |
 | Class(identifier, dictionary) | Graph Node |
 
 To extract the RDF call the `serialize()` method. The default format is "turtle".
+
+## Python - EPOSRDF Mapping
+
+Python native types are mapped to RDF types using the following conversion table.
+
+| Native Type       | RDF Type                    |
+| ----------------- | --------------------------- |
+| datetime.datetime | epos.DateOrDateTimeDataType |
+| str, unicode      | xsd.string                  |
+| boolean           | xsd.boolean                 |
+| int               | xsd.integer                 |
+| float             | xsd.float                   |
+| URI http(s)://    | xsd.anyURI                  |
+| list              | Recursive type mapping      |
 
 ## Example Usage
 
