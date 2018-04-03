@@ -314,29 +314,9 @@ class Node(RDFNamespaces):
     # Convert dictionary literal types
     if dictionary is not None:
 
+      # Map the types
       for item in dictionary:
-
-        value = dictionary.get(item)
-
-        # Convert to literal of appropriate type
-        if isinstance(value, str) or isinstance(value, unicode):
-
-          # Map URI (URLs)
-          if value.startswith("http://") or value.startswith("https://"):
-            dictionary[item] = Literal(value, datatype=self.xsd.anyURI)
-          else:
-            dictionary[item] = Literal(value, datatype=self.xsd.string)
-
-        elif isinstance(value, int):
-          dictionary[item] = Literal(value, datatype=self.xsd.integer)
-        elif isinstance(value, float):
-          dictionary[item] = Literal(value, datatype=self.xsd.float)
-        elif isinstance(value, bool):
-          dictionary[item] = Literal(value, datatype=self.xsd.boolean)
-
-        # Map datetime to custom EPOS definition
-        elif isinstance(value, datetime):
-          dictionary[item] = Literal(value, datatype=self.epos.DateOrDateTimeDataType)
+        dictionary[item] = self.mapType(dictionary.get(item))
 
       # Sanity checking for the passed dictionary 
       self.checkDictionary(dictionary)
@@ -349,12 +329,44 @@ class Node(RDFNamespaces):
     else:
       self.identifier = None
 
+ 
+  def mapType(self, value):
+
+    """
+    Node.mapType
+    Maps native Python type to EPOSRDF type
+    """
+
+    # Convert to literal of appropriate type
+    if isinstance(value, str) or isinstance(value, unicode):
+      # Map URI (URLs)
+      if value.startswith("http://") or value.startswith("https://"):
+        return Literal(value, datatype=self.xsd.anyURI)
+      else:
+        return Literal(value, datatype=self.xsd.string)
+    # Map other native Python types
+    elif isinstance(value, int):
+      return Literal(value, datatype=self.xsd.integer)
+    elif isinstance(value, float):
+      return Literal(value, datatype=self.xsd.float)
+    elif isinstance(value, bool):
+      return Literal(value, datatype=self.xsd.boolean)
+    # Map datetime to custom EPOS definition
+    elif isinstance(value, datetime):
+      return Literal(value, datatype=self.epos.DateOrDateTimeDataType)
+    # Recursively map lists
+    elif isinstance(value, list):
+      return map(self.mapType, value)
+    else:
+      return value
+
+
   def checkDictionary(self, dictionary):
 
     """
     Node.checkDictionary
     Checks the validity of the dictionary
-    !!! TODO: refactor
+    !!! TODO: refactor .. it got worse :(
     """
 
     # Convert keys to rdflib predicates
@@ -368,7 +380,7 @@ class Node(RDFNamespaces):
         for rule in self.validator.shackles[self.type.n3()][n]:
           if rule["minItems"] > 0:
             if not n in predicates:
-              if rule["severity"].n3() == self.sh.Warning.n3():
+              if rule["severity"] is not None and rule["severity"].n3() == self.sh.Warning.n3():
                 warnings.warn("Attribute %s in %s is recommended by EPOS RDF" % (n, self.__class__.__name__), UserWarning)
               else:
                 raise ValueError("Attribute %s in %s is required by EPOS RDF" % (n, self.__class__.__name__))
@@ -381,21 +393,29 @@ class Node(RDFNamespaces):
       # Check the types
       for p in dictionary:
 
+        # The nodeshape was defined
         if self.mapPredicate(p).n3() in self.validator.shackles[self.type.n3()]:
+
+          # Check each rule
           for rule in self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]:
+
             allowed = rule["allowed"]
 
-            if isinstance(dictionary[p], Literal):
-              if URIRef(dictionary[p].datatype).n3() not in allowed:
-                raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
+            def checkType(thing):
+              if isinstance(thing, Literal):
+                if URIRef(thing.datatype).n3() not in allowed:
+                  raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
+              elif isinstance(thing, dict):
+                pass
+              else:
+                if URIRef(thing.type).n3() not in allowed:  
+                  raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].type, self.__class__.__name__, allowed))
 
-            # Skip all dicts
-            elif isinstance(dictionary[p], dict):
-              pass
-
+            if isinstance(dictionary[p], list):
+              map(checkType, dictionary[p])
             else:
-              if URIRef(dictionary[p].type).n3() not in allowed: 
-                raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].type, self.__class__.__name__, allowed))
+              checkType(dictionary[p])
+
 
   def parseArguments(self, arguments):
 
