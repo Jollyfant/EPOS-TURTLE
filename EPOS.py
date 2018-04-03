@@ -58,9 +58,20 @@ if __name__ == "__main__":
     "schema:identifier": "Some identifier"
   })
 
-  R.register(Org)
-  R.register(CPoint)
-  R.register(Pers)
-  R.register(Webs)
+  CRS = CatalogRecord("uh", {
+    "foaf:primaryTopic": Dataset("Linkie"),
+    "dct:modified": datetime.datetime.now(),
+    "dct:issued": datetime.datetime.now(),
+    "dct:created": datetime.datetime.now(),
+    "dct:conformsTo": Standard({
+      "dct:there": "OK"
+    }),
+    "cnt:characterEncoding": "UTF-8",
+    "adms:status": {
+      "dct:there": "OK"
+    }
+  })
+
+  R.register(CRS)
   
   print R.serialize()

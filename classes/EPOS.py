@@ -54,7 +54,12 @@ class RDFNamespaces():
     Maps predicate string ns:field to rdflib class
     """
 
+    # Check if namespace is defined
+    if ":" not in predicate:
+      raise ValueError("No namespace defined for property: %s in %s" % (predicate, self.__class__.__name__))
+
     (namespace, item) = predicate.split(":")
+
     return getattr(self, namespace)[item]
 
 
@@ -190,6 +195,11 @@ class EPOSRDF(RDFNamespaces):
 
 class RDFValidator(RDFNamespaces):
 
+  """
+  Class RDFValidator
+  Validates the RDF structures
+  """
+
   SHAPEFILE = os.path.join("shacl", "shapes.ttl")
 
   def __init__(self):
@@ -303,7 +313,7 @@ class Node(RDFNamespaces):
         value = dictionary.get(item)
 
         # Convert to literal of appropriate type
-        if isinstance(value, str):
+        if isinstance(value, str) or isinstance(value, unicode):
 
           # Map URI (URLs)
           if value.startswith("http://") or value.startswith("https://"):
@@ -338,7 +348,6 @@ class Node(RDFNamespaces):
     """
     Node.checkDictionary
     Checks the validity of the dictionary
-    !!! TODO: Refactor this: kind of messy
     """
 
     # Convert keys to rdflib predicates
@@ -360,11 +369,18 @@ class Node(RDFNamespaces):
 
       # Check the types
       for p in dictionary:
+
         if self.mapPredicate(p).n3() in self.validator.shackles[self.type.n3()]:
           allowed = self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]["allowed"]
+
           if isinstance(dictionary[p], Literal):
             if URIRef(dictionary[p].datatype).n3() not in allowed:
-              raise ValueError("Attribute %s of type in %s %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
+              raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
+
+          # Skip all dicts
+          elif isinstance(dictionary[p], dict):
+            pass
+
           else:
             if URIRef(dictionary[p].type).n3() not in allowed: 
               raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].type, self.__class__.__name__, allowed))
@@ -390,7 +406,7 @@ class Node(RDFNamespaces):
     if isinstance(argument, dict):
       return None, argument
 
-    if isinstance(argument, str):
+    if isinstance(argument, str) or isinstance(argument, unicode):
       return argument, None
 
     # Arguments are invalid
