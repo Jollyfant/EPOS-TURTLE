@@ -2,7 +2,7 @@ import json
 import warnings
 import os
 
-from datetime import datetime
+from datetime import date, datetime
 from rdflib.serializer import Serializer
 from rdflib import URIRef, Literal, Graph, BNode
 from rdflib.namespace import FOAF, RDF, RDFS, DCTERMS, DC, XSD, SKOS, OWL
@@ -302,6 +302,7 @@ class RDFValidator(RDFNamespaces):
 
     return nodes
 
+
 class Node(RDFNamespaces):
 
   """
@@ -363,7 +364,9 @@ class Node(RDFNamespaces):
       return Literal(value, datatype=self.xsd.boolean)
     # Map datetime to custom EPOS definition
     elif isinstance(value, datetime):
-      return Literal(value, datatype=self.epos.DateOrDateTimeDataType)
+      return Literal(value, datatype=self.xsd.dateTime)
+    elif isinstance(value, date):
+      return Literal(value, datatype=self.xsd.date)
     # Recursively map lists
     elif isinstance(value, list):
       return map(self.mapType, value)
@@ -376,42 +379,61 @@ class Node(RDFNamespaces):
     """
     Node.checkDictionary
     Checks the validity of the dictionary
-    !!! TODO: refactor .. it got worse :(
     """
 
     # Convert keys to rdflib predicates
-    predicates = map(lambda x: x.n3(), map(self.mapPredicate, dictionary.keys()))
+    predicates = dict()
+    for key in dictionary.keys():
+      predicates[self.mapPredicate(key).n3()] = dictionary[key]
+
+    # Get the current node name
+    currentNode = self.type.n3()
 
     # If a shacl:NodeShape was constrained
-    if self.type.n3() in self.validator.shackles:
+    if currentNode in self.validator.shackles:
+      for prop in self.validator.shackles[currentNode]:
+        for rule in self.validator.shackles[currentNode][prop]:
 
-      # Check required
-      for n in self.validator.shackles[self.type.n3()]:
-        for rule in self.validator.shackles[self.type.n3()][n]:
+          # Minimum items were specified
           if rule["minItems"] > 0:
-            if not n in predicates:
-              if rule["severity"] is not None and rule["severity"].n3() == self.sh.Warning.n3():
-                warnings.warn("Attribute %s in %s is recommended by EPOS RDF" % (n, self.__class__.__name__), UserWarning)
-              else:
-                raise ValueError("Attribute %s in %s is required by EPOS RDF" % (n, self.__class__.__name__))
+
+            # The property must then be specified
+            if prop in predicates:
+
+              if rule["minItems"] == 1:
+                continue
+
+              # More items check for a list
+              if rule["minItems"] > 1 and isinstance(predicates[prop], list) and len(predicates[prop]) >= rule["minItems"]:
+                continue
+
+            # Raise!
+            if rule["severity"] is not None and rule["severity"].n3() == self.sh.Warning.n3():
+              warnings.warn("Attribute %s in %s is recommended by EPOS RDF" % (prop, self.__class__.__name__), UserWarning)
+            else:
+              raise ValueError("Attribute %s in %s is required by EPOS RDF" % (prop, self.__class__.__name__))
 
       # Check allowed
-      for p in predicates:
-        if p not in self.validator.shackles[self.type.n3()]:
-          raise ValueError("Attribute %s in %s is not supported by EPOS RDF" % (p, self.__class__.__name__))
+      for predicate in predicates:
+        if predicate not in self.validator.shackles[currentNode]:
+          raise ValueError("Attribute %s in %s is not supported by EPOS RDF" % (predicate, self.__class__.__name__))
 
       # Check the types
+      # !!! Still needs to be refactored
       for p in dictionary:
 
+        currentKey = self.mapPredicate(p).n3()
+
         # The nodeshape was defined
-        if self.mapPredicate(p).n3() in self.validator.shackles[self.type.n3()]:
+        if currentKey in self.validator.shackles[currentNode]:
 
           # Check each rule
-          for rule in self.validator.shackles[self.type.n3()][self.mapPredicate(p).n3()]:
+          for rule in self.validator.shackles[currentNode][currentKey]:
 
             allowed = rule["allowed"]
 
             def checkType(thing):
+
               if isinstance(thing, Literal):
                 if URIRef(thing.datatype).n3() not in allowed:
                   raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
