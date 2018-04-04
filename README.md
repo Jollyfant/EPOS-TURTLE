@@ -22,15 +22,16 @@ To extract the RDF call the `serialize()` method. The default format is "turtle"
 
 Python native types are mapped to RDF types using the following conversion table.
 
-| Native Type       | RDF Type                    |
-| ----------------- | --------------------------- |
-| datetime.datetime | epos.DateOrDateTimeDataType |
-| str, unicode      | xsd.string                  |
-| boolean           | xsd.boolean                 |
-| int               | xsd.integer                 |
-| float             | xsd.float                   |
-| URI http(s)://    | xsd.anyURI                  |
-| list              | Recursive type mapping      |
+| Native Type       | RDF Type               |
+| ----------------- | ---------------------- |
+| datetime.datetime | xsd.datetime           |
+| datetime.date     | xsd.date               |
+| str, unicode      | xsd.string             |
+| boolean           | xsd.boolean            |
+| int               | xsd.integer            |
+| float             | xsd.float              |
+| URI http(s)://    | xsd.anyURI             |
+| list              | Recursive type mapping |
 
 ## Example Usage
 
