@@ -327,7 +327,13 @@ class Node(RDFNamespaces):
 
       # Map the types
       for item in dictionary:
-        dictionary[item] = self.mapType(dictionary.get(item))
+
+        value = self.mapType(dictionary.get(item))
+
+        if not isinstance(value, list):
+          value = [value]
+
+        dictionary[item] = value
 
       # Sanity checking for the passed dictionary 
       self.checkDictionary(dictionary)
@@ -340,7 +346,6 @@ class Node(RDFNamespaces):
     else:
       self.identifier = None
 
- 
   def mapType(self, value):
 
     """
@@ -350,29 +355,24 @@ class Node(RDFNamespaces):
 
     # Convert to literal of appropriate type
     if isinstance(value, str) or isinstance(value, unicode):
-      # Map URI (URLs)
       if value.startswith("http://") or value.startswith("https://"):
         return Literal(value, datatype=self.xsd.anyURI)
       else:
         return Literal(value, datatype=self.xsd.string)
-    # Map other native Python types
     elif isinstance(value, int):
       return Literal(value, datatype=self.xsd.integer)
     elif isinstance(value, float):
       return Literal(value, datatype=self.xsd.float)
     elif isinstance(value, bool):
       return Literal(value, datatype=self.xsd.boolean)
-    # Map datetime to custom EPOS definition
     elif isinstance(value, datetime):
       return Literal(value, datatype=self.xsd.dateTime)
     elif isinstance(value, date):
       return Literal(value, datatype=self.xsd.date)
-    # Recursively map lists
     elif isinstance(value, list):
       return map(self.mapType, value)
     else:
       return value
-
 
   def checkDictionary(self, dictionary):
 
@@ -380,6 +380,10 @@ class Node(RDFNamespaces):
     Node.checkDictionary
     Checks the validity of the dictionary
     """
+
+    # Warnings and exceptions
+    ATTRIBUTE_RECOMMENDED_WARNING = "Attribute %s in %s is recommended by EPOS RDF"
+    ATTRIBUTE_REQUIRED_EXCEPTION = "Attribute %s in %s is required by EPOS RDF"
 
     # Convert keys to rdflib predicates
     predicates = dict()
@@ -394,60 +398,75 @@ class Node(RDFNamespaces):
       for prop in self.validator.shackles[currentNode]:
         for rule in self.validator.shackles[currentNode][prop]:
 
-          # Minimum items were specified
-          if rule["minItems"] > 0:
+          # Not required
+          if rule["minItems"] == 0:
+            continue
 
-            # The property must then be specified
-            if prop in predicates:
+          # More items check for a list
+          if prop in predicates and len(predicates[prop]) >= rule["minItems"]:
+            continue
 
-              if rule["minItems"] == 1:
-                continue
+          # Raise
+          if rule["severity"] is not None and rule["severity"].n3() == self.sh.Warning.n3():
+            warnings.warn(ATTRIBUTE_RECOMMENDED_WARNING % (prop, self.__class__.__name__), UserWarning)
+          else:
+            raise ValueError(ATTRIBUTE_REQUIRED_EXCEPTION % (prop, self.__class__.__name__))
 
-              # More items check for a list
-              if rule["minItems"] > 1 and isinstance(predicates[prop], list) and len(predicates[prop]) >= rule["minItems"]:
-                continue
+      currentShackle = self.validator.shackles[currentNode]
 
-            # Raise!
-            if rule["severity"] is not None and rule["severity"].n3() == self.sh.Warning.n3():
-              warnings.warn("Attribute %s in %s is recommended by EPOS RDF" % (prop, self.__class__.__name__), UserWarning)
+      # Check if all attributes are allowed
+      self.checkAllowed(currentShackle, predicates)
+
+      # Check if all types are OK
+      self.checkTypes(currentShackle, dictionary)
+
+  def checkAllowed(self, currentShackle, predicates):
+
+    """
+    Node.checkAllowed
+    Checks whether the passed keys are allowed 
+    """
+
+    ATTRIBUTE_UNSUPPORTED_EXCEPTION = "Attribute %s in %s is not supported by EPOS RDF"
+
+    for predicate in predicates:
+      if predicate not in currentShackle: 
+        raise ValueError(ATTRIBUTE_UNSUPPORTED_EXCEPTION % (predicate, self.__class__.__name__))
+
+  def checkTypes(self, currentShackle, dictionary):
+
+    """
+    Node.checkTypes
+    Checks whether the passed value types are allowed
+    """
+
+    ATTRIBUTE_TYPE_UNSUPPORTED_EXCEPTION = "Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s"
+
+    # Check the types
+    for prop in dictionary:
+
+      # Get the current key as a mapped predicate
+      currentKey = self.mapPredicate(prop).n3()
+
+      # The nodeshape was defined
+      if currentKey in currentShackle: 
+
+        # Check each rule
+        for rule in currentShackle[currentKey]: 
+
+          allowed = rule["allowed"]
+
+          for thing in dictionary[prop]:
+
+            # It can be either a literal or class: skip dicts
+            if isinstance(thing, Literal):
+              if URIRef(thing.datatype).n3() not in allowed:
+                raise ValueError(ATTRIBUTE_TYPE_UNSUPPORTED_EXCEPTION % (prop, thing.datatype, self.__class__.__name__, allowed))
+            elif isinstance(thing, dict):
+              pass
             else:
-              raise ValueError("Attribute %s in %s is required by EPOS RDF" % (prop, self.__class__.__name__))
-
-      # Check allowed
-      for predicate in predicates:
-        if predicate not in self.validator.shackles[currentNode]:
-          raise ValueError("Attribute %s in %s is not supported by EPOS RDF" % (predicate, self.__class__.__name__))
-
-      # Check the types
-      # !!! Still needs to be refactored
-      for p in dictionary:
-
-        currentKey = self.mapPredicate(p).n3()
-
-        # The nodeshape was defined
-        if currentKey in self.validator.shackles[currentNode]:
-
-          # Check each rule
-          for rule in self.validator.shackles[currentNode][currentKey]:
-
-            allowed = rule["allowed"]
-
-            def checkType(thing):
-
-              if isinstance(thing, Literal):
-                if URIRef(thing.datatype).n3() not in allowed:
-                  raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].datatype, self.__class__.__name__, allowed))
-              elif isinstance(thing, dict):
-                pass
-              else:
-                if URIRef(thing.type).n3() not in allowed:  
-                  raise ValueError("Attribute %s of type %s in %s is not supported by EPOS RDF. Expected %s" % (p, dictionary[p].type, self.__class__.__name__, allowed))
-
-            if isinstance(dictionary[p], list):
-              map(checkType, dictionary[p])
-            else:
-              checkType(dictionary[p])
-
+              if URIRef(thing.type).n3() not in allowed:      
+                raise ValueError(ATTRIBUTE_TYPE_UNSUPPORTED_EXCEPTION % (prop, thing.type, self.__class__.__name__, allowed))
 
   def parseArguments(self, arguments):
 
