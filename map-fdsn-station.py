@@ -93,9 +93,9 @@ def registerStations(network):
 def getSampleRate(sampleRate):
 
   try:
-    return str(1000 / float(sampleRate))
+    return 1000 / float(sampleRate)
   except Exception:
-    return "0"
+    return 0
 
 def registerChannels(network, station):
 
