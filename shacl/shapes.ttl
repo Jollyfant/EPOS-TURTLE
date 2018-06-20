@@ -140,6 +140,7 @@ dcat:keyword owl:equivalentProperty schema:keywords .
 ##We extend range and domain of dcat:contactPoint
 dcat:contactPoint
   rdf:type owl:ObjectProperty ;
+  rdfs:domain dcat:Dataset ;  
   rdfs:domain schema:Organization ;
   rdfs:domain schema:Person ;
   rdfs:domain epos:Equipment ;
@@ -187,7 +188,7 @@ epos:filter
 .
 epos:samplePeriod
   rdf:type owl:DatatypeProperty ;
-  rdfs:comment "This property contains the sample period in mS"@en  ;
+  rdfs:comment "This property contains the sample period in ms"@en  ;
   rdfs:domain epos:Equipment ;
   rdfs:range rdfs:Literal ;
 .
@@ -1147,12 +1148,13 @@ epos:EquipmentShape
  sh:property [
       sh:path dct:isPartOf ;
       sh:or (
-         [
-          sh:class epos:Facility;
-        ]
         [
           sh:class epos:Equipment;
-        ]);
+        ]
+        [
+          sh:class epos:Facility;
+        ]
+      );
  ] ;
 
  sh:property [
@@ -1177,7 +1179,7 @@ epos:EquipmentShape
 
  sh:property [
       sh:path epos:samplePeriod ;
-      sh:datatype xsd:string;
+      sh:datatype xsd:float;
  ] ;
 
  sh:property [

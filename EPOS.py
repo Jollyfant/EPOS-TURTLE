@@ -27,8 +27,6 @@ if __name__ == "__main__":
     "schema:logo": "http://identifier.id",
     "schema:email": "someone@test.org",
     "dcat:contactPoint": ContactPoint("http://orcid.org/0000-0000-0000-0000"), 
-    "epos:scientificContact": Person("http://orcid.org/0000-0000-0000-0000"),
-    "epos:legalContact": Person("http://orcid.org/0000-0000-0000-0000"),
     "schema:address": PostalAddress({
       "schema:streetAddress": "A street"
     })
@@ -48,8 +46,6 @@ if __name__ == "__main__":
 
   Webs = EPOSWebService("webserviceId", {
     "dcat:theme": Concept("ConceptReference"),
-    "dct:issued": datetime.datetime.now(), 
-    "dct:modified": datetime.datetime.now(),
     "schema:name": "Some description",
     "schema:description": "Some description",
     "schema:provider": Organization("PIC:000000000"), 
@@ -58,20 +54,6 @@ if __name__ == "__main__":
     "schema:identifier": "Some identifier"
   })
 
-  CRS = CatalogRecord("uh", {
-    "foaf:primaryTopic": Dataset("Linkie"),
-    "dct:modified": datetime.datetime.now(),
-    "dct:issued": datetime.datetime.now(),
-    "dct:created": datetime.datetime.now(),
-    "dct:conformsTo": Standard({
-      "dct:there": "OK"
-    }),
-    "cnt:characterEncoding": "UTF-8",
-    "adms:status": {
-      "dct:there": "OK"
-    }
-  })
-
-  R.register(CRS)
+  R.register(Org)
   
   print R.serialize()
