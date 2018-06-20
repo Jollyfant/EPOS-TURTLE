@@ -23,6 +23,10 @@ for line in r.content.split("\n")[-2:-1]:
     "dct:identifier": "something",
     "dct:title": "EPOS Shakemap",
     "dct:description": "ShakeMap URL for " + eventId,
+    "purl:format": "XML",
+    "dct:spatial": Location({
+      "locn:geometry": "POINT((" + latitude + "," + longitude + "," + "0))"
+    }),
     "dcat:distribution": Distribution("DISTRIBUTION:" + eventId)
   })
 
